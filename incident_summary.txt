@@ -1,0 +1,6 @@
+Incident Triage Summary
+======================
+Total alerts: 996
+HIGH: 80
+MEDIUM: 86
+LOW: 830
