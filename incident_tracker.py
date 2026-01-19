@@ -17,6 +17,48 @@ class AlertType(Enum):
     HTTP_REQUEST = "http_request"
     LOGIN_ATTEMPT = "login_attempt"
 
+
+# Turn each record into an object
+class Alert:
+    def __init__(self, date, alert_type, asset, indicator):
+        self.date = date
+        self.alert_type = alert_type
+        self.asset = asset
+        self.indicator = indicator
+        self.classification = "N/A"  # Challenge A property
+
+    # Method that returns a severity string (now with enum comparisons)
+    def severity(self):
+        if self.alert_type == AlertType.FILE_HASH_DETECTED:
+            return "HIGH"
+        elif self.alert_type in [AlertType.PORT_SCAN, AlertType.DNS_QUERY]:
+            return "MEDIUM"
+        else:
+            return "LOW"
+
+    # Challenge A: method to set classification
+    def set_classification(self):
+        parts = self.indicator.split(".")
+        is_ip = (
+            len(parts) == 4
+            and all(p.isdigit() for p in parts)
+            and all(0 <= int(p) <= 255 for p in parts)
+        )
+
+        if not is_ip:
+            self.classification = "N/A"
+        elif self.indicator.startswith("10.") or self.indicator.startswith("192.168."):
+            self.classification = "internal"
+        else:
+            self.classification = "external"
+
+        return self.classification
+
+    # Challenge B: __str__ method
+    def __str__(self):
+        return f"{self.date} [{self.severity()}] {self.alert_type} on {self.asset} -> {self.indicator}"
+
+
 # Read and Parse FIle
 with open("alerts.txt", "r", encoding="utf-8") as f:
     lines = f.read().splitlines()
@@ -37,27 +79,12 @@ for line in lines:
 
 print(records[0])
 
-# Turn each record into an object
-class Alert:
-    def __init__(self, date, alert_type, asset, indicator):
-        self.date = date
-        self.alert_type = alert_type
-        self.asset = asset
-        self.indicator = indicator
-
-    # Method that returns a severity string (now with enum comparisons)
-    def severity(self):
-        if self.alert_type == AlertType.FILE_HASH_DETECTED:
-            return "HIGH"
-        elif self.alert_type in [AlertType.PORT_SCAN, AlertType.DNS_QUERY]:
-            return "MEDIUM"
-        else:
-            return "LOW"
-
 # Convert reecords into alert objects
 alerts = []
 for date, alert_type, asset, indicator in records:
-    alerts.append(Alert(date, alert_type, asset, indicator))
+    a = Alert(date, alert_type, asset, indicator)
+    a.set_classification()  # Challenge A
+    alerts.append(a)
 
 print(alerts[0].alert_type, alerts[0].severity())
 
@@ -65,6 +92,8 @@ print(alerts[0].alert_type, alerts[0].severity())
 high = 0
 medium = 0
 low = 0
+internal = 0
+external = 0
 
 for a in alerts:
     sev = a.severity()
@@ -75,11 +104,21 @@ for a in alerts:
     else:
         low += 1
 
+    if a.classification == "internal":
+        internal += 1
+    elif a.classification == "external":
+        external += 1
+
 print("\n=== Summary ===")
 print(f"HIGH: {high}")
 print(f"MEDIUM: {medium}")
 print(f"LOW: {low}")
+print(f"INTERNAL: {internal}")
+print(f"EXTERNAL: {external}")
 
+# Challenge B: print all alerts neatly
+for a in alerts:
+    print(a)
 
 # Checkpoint test
 # AlertType.FILE_HASH_DETECTED expected
@@ -96,4 +135,5 @@ with open("incident_summary.txt", "w", encoding="utf-8") as out:
     out.write(f"HIGH: {high}\n")
     out.write(f"MEDIUM: {medium}\n")
     out.write(f"LOW: {low}\n")
-
+    out.write(f"INTERNAL: {internal}\n")
+    out.write(f"EXTERNAL: {external}\n")
